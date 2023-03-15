@@ -1,0 +1,43 @@
+version: 0.1
+component: build
+timeoutInSeconds: 1000
+shell: bash
+
+steps:
+  - type: Command
+    name: "Run Gradle cyclonedxBom command"
+    command: |
+      cat <<EOF >> init.gradle
+        initscript {
+          repositories {
+            maven {
+                url "https://plugins.gradle.org/m2/"
+              }
+            }
+            dependencies {
+              classpath "org.cyclonedx:cyclonedx-gradle-plugin:1.7.4"
+            }
+          }
+
+        allprojects{
+          apply plugin:org.cyclonedx.gradle.CycloneDxPlugin
+          cyclonedxBom {
+            includeConfigs = ["runtimeClasspath"]
+            skipConfigs = []
+            skipProjects = ["childJar"]
+            projectType = "application"
+            schemaVersion = "1.4"
+            destination = file("build/reports")
+            outputName = "bom"
+            outputFormat = "json"
+            includeBomSerialNumber = false
+            includeLicenseText = true
+            componentVersion = "2.0.0"
+          }
+        }
+      EOF
+      gradle --init-script init.gradle cyclonedxBom -info
+outputArtifacts:
+  - name: sbom
+    type: BINARY
+    location: ${OCI_PRIMARY_SOURCE_DIR}/build/reports/bom.json
